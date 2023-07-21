@@ -1,0 +1,262 @@
+diff --git a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd.h b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd.h
+index 11c94a6f..1118e6fc 100644
+--- a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd.h
++++ b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd.h
+@@ -155,6 +155,10 @@
+ #define SERIAL_OPCODE_CMD_MESH_CONFIG_SERVER_BIND             (0xAD) /**< Params: @ref serial_cmd_mesh_config_server_devkey_bind_t */
+ #define SERIAL_OPCODE_CMD_MESH_NET_STATE_SET                  (0xAE) /**< Params: @ref serial_cmd_mesh_net_state_set_t */
+ #define SERIAL_OPCODE_CMD_MESH_NET_STATE_GET                  (0xAF) /**< Params: None. */
++#define SERIAL_OPCODE_CMD_MESH_HB_PUBLICATION_GET             (0xB0) /**< Params: None. */
++#define SERIAL_OPCODE_CMD_MESH_HB_PUBLICATION_SET             (0xB1) /**< Params: @ref serial_cmd_mesh_hb_publication_set_t */
++#define SERIAL_OPCODE_CMD_MESH_HB_SUBSCRIPTION_GET            (0xB2) /**< Params: None. */
++#define SERIAL_OPCODE_CMD_MESH_HB_SUBSCRIPTION_SET            (0xB3) /**< Params: @ref serial_cmd_mesh_hb_subscription_set_t */
+ #define SERIAL_OPCODE_CMD_RANGE_MESH_END                      (0xBF) /**< MESH range end. */
+ 
+ #define SERIAL_OPCODE_CMD_RANGE_DFU_START                     (0xD0) /**< DFU range start. */
+@@ -518,6 +522,25 @@ typedef struct __attribute((packed))
+     uint32_t  next_seqnum_block; /**< The first sequence number block which is not yet allocated. */
+ } serial_cmd_mesh_net_state_set_t;
+ 
++/** Heartbeat publication set command parameters */
++typedef struct __attribute((packed))
++{
++    uint16_t  dst; /**< The destination to send heartbeat messages.*/
++    uint32_t  count; /**< How many messages to send.*/
++    uint32_t  period; /**< What interval to send messages.*/
++    uint8_t   ttl; /**< Initial TTL.*/
++    uint16_t  features; /**< The features that trigger sending messages when changed.*/
++    uint16_t  netkey_index; /**< The global NetKey Index of the Netkey used to send.*/
++} serial_cmd_mesh_hb_publication_set_t;
++
++/** Heartbeat subscription set command parameters */
++typedef struct __attribute((packed))
++{
++    uint16_t  src; /**< The unicast source address for messages a node shall process.*/
++    uint16_t  dst; /**< The destination to receive heartbeat messages.*/
++    uint32_t  period; /**< The number of seconds left for processing messages.*/
++} serial_cmd_mesh_hb_subscription_set_t;
++
+ /** Mesh command parameters. */
+ typedef union __attribute((packed))
+ {
+@@ -549,6 +572,8 @@ typedef union __attribute((packed))
+     serial_cmd_mesh_packet_send_t                   packet_send;                   /**< Packet send parameters. */
+     serial_cmd_mesh_config_server_devkey_bind_t     config_server_devkey_bind;     /**< Configuration Server: device key bind parameters. */
+     serial_cmd_mesh_net_state_set_t                 net_state_set;                 /**< Net state set parameters */
++    serial_cmd_mesh_hb_publication_set_t            hb_publication_set;            /**< Heartbeat Publication set parameters */
++    serial_cmd_mesh_hb_subscription_set_t           hb_subscription_set;           /**< Heartbeat Subscription set parameters */
+ } serial_cmd_mesh_t;
+ 
+ /* **** PB-MESH Client **** */
+diff --git a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd_rsp.h b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd_rsp.h
+index 00f4d45b..f1733aa7 100644
+--- a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd_rsp.h
++++ b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/include/serial_cmd_rsp.h
+@@ -309,6 +309,28 @@ typedef struct __attribute((packed))
+     uint32_t  next_seqnum_block; /**< The start of the next unused sequence number block. */
+ } serial_evt_cmd_rsp_data_net_state_get_t;
+ 
++/** Command response to @ref SERIAL_OPCODE_CMD_MESH_HB_PUBLICATION_GET with the current heartbeat publication state */
++typedef struct __attribute((packed))
++{
++    uint16_t  dst; /**< The destination to send heartbeat messages.*/
++    uint8_t  count_log; /**< How many messages to send.*/
++    uint8_t  period_log; /**< What interval to send messages.*/
++    uint8_t   ttl; /**< Initial TTL.*/
++    uint16_t  features; /**< The features that trigger sending messages when changed.*/
++    uint16_t  netkey_index; /**< The global NetKey Index of the Netkey used to send.*/
++} serial_evt_cmd_rsp_data_hb_publication_get_t;
++
++/** Command response to @ref SERIAL_OPCODE_CMD_MESH_HB_SUBSCRIPTION_GET with the current heartbeat subscription state */
++typedef struct __attribute((packed))
++{
++    uint16_t  src; /**< The unicast source address for messages a node shall process.*/
++    uint16_t  dst; /**< The destination to receive heartbeat messages.*/
++    uint8_t  period_log; /**< The number of seconds left for processing messages.*/
++    uint8_t  count_log; /**< The number of periodical messages received.*/
++    uint16_t  min_hops; /**< The minimum hops value registered when receiving messages.*/
++    uint16_t  max_hops; /**< The maximum hops value registered when receiving messages.*/
++} serial_evt_cmd_rsp_data_hb_subscription_get_t;
++
+ /** Command response packet. */
+ typedef struct __attribute((packed))
+ {
+@@ -348,7 +370,8 @@ typedef struct __attribute((packed))
+         serial_evt_cmd_rsp_data_model_init_t           model_init;     /**< Reserved handle for the initialized model instance. */
+         serial_evt_cmd_rsp_data_packet_send_t          packet_send;    /**< Information about the sent packet. */
+         serial_evt_cmd_rsp_data_net_state_get_t        net_state_get;  /**< Net state. */
+-
++        serial_evt_cmd_rsp_data_hb_publication_get_t   hb_publication_get; /**< Heartbeat Publication States. */
++        serial_evt_cmd_rsp_data_hb_subscription_get_t  hb_subscription_get; /**< Heartbeat Subscription States. */
+     } data; /**< Optional command response data. */
+ } serial_evt_cmd_rsp_t;
+ 
+diff --git a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/src/serial_handler_mesh.c b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/src/serial_handler_mesh.c
+index 655cdcd3..25fd52ff 100644
+--- a/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/src/serial_handler_mesh.c
++++ b/nrf5_SDK_for_Mesh_v5.0.0_src/mesh/serial/src/serial_handler_mesh.c
+@@ -54,6 +54,7 @@
+ #include "mesh_opt_net_state.h"
+ #include "mesh_config_entry.h"
+ #include "mesh_config_listener.h"
++#include "heartbeat.h"
+ 
+ /* Ensure that we're mapping the size of the serial parameter to the
+  * dsm_handle_t. If this triggers, someone changed the size of the
+@@ -488,6 +489,143 @@ static void handle_net_state_get(const serial_packet_t * p_cmd)
+     serial_handler_common_cmd_rsp_nodata_on_error(p_cmd->opcode, status, (uint8_t *)&rsp, sizeof(rsp));
+ }
+ 
++static inline uint8_t heartbeat_pubsub_period_encode(uint32_t period)
++{
++    if (period == 0)
++    {
++        return 0x00;
++    }
++    else if (period <= HEARTBEAT_MAX_PERIOD)
++    {
++        return (log2_get(period) + 1);
++    }
++    else
++    {
++        NRF_MESH_ASSERT(false);
++        return HEARTBEAT_MAX_PERIOD_LOG;
++    }
++}
++
++static inline uint8_t heartbeat_publication_count_encode(uint32_t count)
++{
++    if (count <= 1)
++    {
++        return count;
++    }
++    else if (count <= HEARTBEAT_MAX_COUNT)
++    {
++        /* Finding smallest n where 2^(n-1) is greater than or equal to the count value */
++        return (log2_get(count - 1) + 1 + 1);
++    }
++    else if (count == HEARTBEAT_INF_COUNT)
++    {
++        return HEARTBEAT_INF_COUNT_LOG;
++    }
++    else
++    {
++        NRF_MESH_ASSERT(false);
++        return HEARTBEAT_MAX_COUNT_LOG;
++    }
++}
++
++static inline uint8_t heartbeat_subscription_count_encode(uint32_t count)
++{
++    if (count == 0)
++    {
++        return 0x00;
++    }
++    else if (count <= HEARTBEAT_MAX_COUNT)
++    {
++        /* Finding largest n where 2^(n-1) is less than or equal to the count value */
++        return (log2_get(count) + 1);
++    }
++    else if (count == HEARTBEAT_INF_COUNT)
++    {
++        return HEARTBEAT_INF_COUNT_LOG;
++    }
++    else
++    {
++        NRF_MESH_ASSERT(false);
++        return HEARTBEAT_MAX_COUNT_LOG;
++    }
++}
++
++static void handle_heartbeat_publication_get(const serial_packet_t * p_cmd)
++{
++    const heartbeat_publication_state_t * p_hb_pub = heartbeat_publication_get();
++    serial_evt_cmd_rsp_data_hb_publication_get_t rsp = {
++        .dst = p_hb_pub->dst,
++        .count_log = heartbeat_publication_count_encode(p_hb_pub->count),
++        .period_log = heartbeat_pubsub_period_encode(p_hb_pub->period),
++        .ttl = p_hb_pub->ttl,
++        .features = p_hb_pub->features,
++        .netkey_index = p_hb_pub->netkey_index
++    };
++    serial_cmd_rsp_send(p_cmd->opcode, SERIAL_STATUS_SUCCESS, (uint8_t *)&rsp, sizeof(rsp));
++}
++
++static void handle_heartbeat_publication_set(const serial_packet_t * p_cmd)
++{
++    uint32_t status;
++    const heartbeat_publication_state_t hb_pub = {
++        .dst          = p_cmd->payload.cmd.mesh.hb_publication_set.dst,
++        .count        = p_cmd->payload.cmd.mesh.hb_publication_set.count,
++        .period       = p_cmd->payload.cmd.mesh.hb_publication_set.period,
++        .ttl          = p_cmd->payload.cmd.mesh.hb_publication_set.ttl,
++        .features     = p_cmd->payload.cmd.mesh.hb_publication_set.features,
++        .netkey_index = p_cmd->payload.cmd.mesh.hb_publication_set.netkey_index
++    };
++
++    /* This is specifically required for INVALID_NETKEY status code */
++    if (dsm_net_key_index_to_subnet_handle(p_cmd->payload.cmd.mesh.hb_publication_set.netkey_index)
++                                           == DSM_HANDLE_INVALID)
++    {
++        status = NRF_ERROR_INVALID_DATA;
++    }
++    else
++    {
++        status = heartbeat_publication_set(&hb_pub);
++    }
++    serial_handler_common_cmd_rsp_nodata_on_error(p_cmd->opcode, status, NULL, 0);
++}
++static void handle_heartbeat_subscription_get(const serial_packet_t * p_cmd)
++{
++    const heartbeat_subscription_state_t * p_hb_sub = heartbeat_subscription_get();
++    serial_evt_cmd_rsp_data_hb_subscription_get_t rsp;
++
++    /* When the Heartbeat Subscription Source or Destination state is set to the unassigned address,
++     the value of - the Source and Destination fields of the Status message shall be set to the
++     unassigned address and the values of the CountLog, PeriodLog, MinHops, and MaxHops fields shall
++     be set to 0x00. Refer to @tagMeshSp section 4.4.1.2.16 */
++    if (p_hb_sub->src == NRF_MESH_ADDR_UNASSIGNED ||
++        p_hb_sub->dst == NRF_MESH_ADDR_UNASSIGNED)
++    {
++        memset(&rsp, 0, sizeof(serial_evt_cmd_rsp_data_hb_subscription_get_t));
++    }
++    else
++    {
++        rsp.src = p_hb_sub->src;
++        rsp.dst = p_hb_sub->dst;
++        rsp.count_log = heartbeat_subscription_count_encode(p_hb_sub->count);
++        rsp.period_log = heartbeat_pubsub_period_encode(p_hb_sub->period);
++        rsp.min_hops = p_hb_sub->min_hops;
++        rsp.max_hops = p_hb_sub->max_hops;
++    }
++    serial_cmd_rsp_send(p_cmd->opcode, SERIAL_STATUS_SUCCESS, (uint8_t *)&rsp, sizeof(rsp));
++}
++static void handle_heartbeat_subscription_set(const serial_packet_t * p_cmd)
++{
++    uint32_t status;
++    const heartbeat_subscription_state_t hb_sub = {
++        .src    = p_cmd->payload.cmd.mesh.hb_subscription_set.src,
++        .dst    = p_cmd->payload.cmd.mesh.hb_subscription_set.dst,
++        .period = p_cmd->payload.cmd.mesh.hb_subscription_set.period,
++        /* other state values shall remain unchanged, see @tagMeshSp section 4.4.1.2.16 */
++    };
++    status = heartbeat_subscription_set(&hb_sub);
++    serial_handler_common_cmd_rsp_nodata_on_error(p_cmd->opcode, status, NULL, 0);
++}
++
+ /*****************************************************************************
+ * Static functions
+ *****************************************************************************/
+@@ -527,7 +665,11 @@ static const mesh_serial_cmd_handler_t m_handlers[] =
+     {SERIAL_OPCODE_CMD_MESH_STATE_CLEAR,                    0,                                                       0,  handle_cmd_clear},
+     {SERIAL_OPCODE_CMD_MESH_CONFIG_SERVER_BIND,             sizeof(serial_cmd_mesh_config_server_devkey_bind_t),     0,  handle_config_devkey_bind},
+     {SERIAL_OPCODE_CMD_MESH_NET_STATE_SET,                  sizeof(serial_cmd_mesh_net_state_set_t),                 0,  handle_net_state_set},
+-    {SERIAL_OPCODE_CMD_MESH_NET_STATE_GET,                  0,                                                       0,  handle_net_state_get}
++    {SERIAL_OPCODE_CMD_MESH_NET_STATE_GET,                  0,                                                       0,  handle_net_state_get},
++    {SERIAL_OPCODE_CMD_MESH_HB_PUBLICATION_GET,             0,                                                       0,  handle_heartbeat_publication_get},
++    {SERIAL_OPCODE_CMD_MESH_HB_PUBLICATION_SET,             sizeof(serial_cmd_mesh_hb_publication_set_t),            0,  handle_heartbeat_publication_set},
++    {SERIAL_OPCODE_CMD_MESH_HB_SUBSCRIPTION_GET,            0,                                                       0,  handle_heartbeat_subscription_get},
++    {SERIAL_OPCODE_CMD_MESH_HB_SUBSCRIPTION_SET,            sizeof(serial_cmd_mesh_hb_subscription_set_t),           0,  handle_heartbeat_subscription_set}
+ };
+ 
+ static void mesh_config_listener_cb(mesh_config_change_reason_t reason, mesh_config_entry_id_t id, const void * p_entry)
