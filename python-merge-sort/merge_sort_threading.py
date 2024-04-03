@@ -4,10 +4,11 @@ import concurrent.futures
 import time
 
 data = list()
-is_thread = False
+is_thread = True
+# is_thread = False
 thread_num = 8
 
-size = 10000000
+size = 1000000
 
 for i in range(size):
     data.append(int(random.random() * size))
