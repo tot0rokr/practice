@@ -1,0 +1,17 @@
+[Unit]
+Description=Systemd Test
+After=network.target
+
+[Service]
+Environment="PATH=/:/bin:/usr/bin"
+ExecStart=/script.sh
+Type=notify
+KillMode=process
+NotifyAccess=main
+Restart=on-failure
+RestartSec=10s
+WatchdogSec=10s
+
+[Install]
+WantedBy=multi-user.target
+
