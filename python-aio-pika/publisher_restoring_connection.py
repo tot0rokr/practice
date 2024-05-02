@@ -17,6 +17,7 @@ async def main() -> None:
         else:
             break
 
+    await asyncio.sleep(10)
     async with connection:
 
         channel = await connection.channel()

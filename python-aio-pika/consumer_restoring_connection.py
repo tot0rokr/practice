@@ -5,6 +5,9 @@ import aio_pika
 from aio_pika.abc import AbstractIncomingMessage
 
 
+WAIT = 1
+
+
 async def on_message1(message: AbstractIncomingMessage) -> None:
     async with message.process():
         #  print(f" [x] Received {message!r}")
@@ -36,15 +39,20 @@ async def main() -> None:
             )
         except aio_pika.exceptions.AMQPConnectionError:
             print("Retry Connection")
-            await asyncio.sleep(3)
+            await asyncio.sleep(WAIT)
         else:
             break
+
+    await asyncio.sleep(WAIT)
 
     queue_name = "test_queue"
 
     async with connection:
         # Creating channel
         channel = await connection.channel()
+
+        print("open channel")
+        await asyncio.sleep(WAIT)
 
         # Will take no more than 10 messages in advance
         await channel.set_qos(prefetch_count=10)
@@ -60,7 +68,17 @@ async def main() -> None:
         await queue3.consume(on_message3)
 
         print(" [*] Waiting for messages. To exit press CTRL+C")
-        await asyncio.Future()
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            await asyncio.sleep(WAIT)
+            print(channel._connection.connection_tune.heartbeat)
+            channel._connection.connection_tune.heartbeat = 5
+            await channel.close()
+            channel = await connection.channel()
+            await channel.close()
+
+    print("closed")
 
 if __name__ == "__main__":
     asyncio.run(main())
