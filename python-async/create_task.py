@@ -1,12 +1,15 @@
 import asyncio
 
 
-def callback(fut):
+def callback(fut, task):
     try:
         exc = fut.exception()
         print(type(exc), exc)
     except asyncio.CancelledError:
         print("Cancelled")
+
+    if fut is task:
+        print("fut is task")
 
 async def func(sec):
     print ("func")
@@ -17,8 +20,8 @@ async def func(sec):
 
 def init():
     print ("init")
-    task = asyncio.create_task(func(5))
-    task.add_done_callback(callback)
+    task = asyncio.create_task(func(3))
+    task.add_done_callback(lambda fut: callback(fut, task))
     print ("init end")
 
     return task
