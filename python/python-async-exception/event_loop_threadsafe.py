@@ -14,9 +14,9 @@ def main():
 
     fut = asyncio.run_coroutine_threadsafe(test(3), loop)
     try:
-        print(fut.result())
-    except Exception as e:
-        print(fut.exception())
+        print("result", fut.result())
+    except Exception:
+        print("exception", fut.exception())
     loop.call_soon_threadsafe(loop.stop)
 
     thread.join()

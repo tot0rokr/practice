@@ -19,10 +19,7 @@ def main():
             print("callback: " + str(fut.exception()))
             raise fut.exception()
 
-    def wrapper(loop, n):
-        loop.create_task(test(n)).add_done_callback(callback)
-
-    loop.call_soon(wrapper, loop, 3)
+    loop.create_task(test(3)).add_done_callback(callback)
 
     loop.run_forever()
 
